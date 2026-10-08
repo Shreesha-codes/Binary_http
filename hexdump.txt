@@ -1,0 +1,67 @@
+Annotated Hexdump of a Complete Binary HTTP Request & Response
+
+Client to Server:
+-----------------
+
+1. REQUEST Frame (Type=0x01)
+>> Sent REQUEST frame
+0000  00 00 0e 01 00 00 00 00 01 01 00 0b 2f 69 6e 64  |............/ind|
+0010  65 78 2e 68 74 6d 6c                             |ex.html|
+Annotation:
+- Length: `00 00 0e` (14 bytes)
+- Type: `01` (REQUEST)
+- Flags: `00`
+- Stream ID: `00 00 00 01` (1)
+- Payload: 
+  - `01` -> Static Index for ":method"
+  - `00 0b` -> Length of path (11)
+  - `2f 69 6e 64 65 78 2e 68 74 6d 6c` -> "/index.html"
+
+2. UNKNOWN Frame (Type=0xFF) - Sent to test skipping
+>> Sent UNKNOWN frame (Type 0xFF)
+0000  00 00 04 ff 00 00 00 00 01 01 02 03 04           |.............|
+Annotation:
+- Length: `00 00 04` (4 bytes)
+- Type: `ff` (UNKNOWN)
+- Payload: `01 02 03 04`
+- Note: The server correctly skips this frame without errors.
+
+Server to Client:
+-----------------
+
+3. RESPONSE Frame (Type=0x02)
+<< Received frame Type=2 Flags=0 Len=2
+0000  00 00 02 02 00 00 00 00 01 00 c8                 |...........|
+Annotation:
+- Length: `00 00 02` (2 bytes)
+- Type: `02` (RESPONSE)
+- Stream ID: `00 00 00 01` (1)
+- Payload: `00 c8` -> 200 (Status Code OK)
+
+4. HEADERS Frame (Type=0x03)
+<< Received frame Type=3 Flags=1 Len=30
+0000  00 00 1e 03 01 00 00 00 01 05 00 02 35 39 09 00  |............59..|
+0010  0a 42 53 65 72 76 65 2f 31 2e 30 04 00 09 74 65  |.BServe/1.0...te|
+0020  78 74 2f 68 74 6d 6c                             |xt/html|
+Annotation:
+- Length: `00 00 1e` (30 bytes)
+- Type: `03` (HEADERS)
+- Flags: `01` (END_HEADERS)
+- Stream ID: `00 00 00 01` (1)
+- Payload components (HPACK encoded):
+  - `05` (content-length), `00 02` (val_len=2), `35 39` ("59")
+  - `09` (server), `00 0a` (val_len=10), `"BServe/1.0"`
+  - `04` (content-type), `00 09` (val_len=9), `"text/html"`
+
+5. DATA Frame (Type=0x04)
+<< Received frame Type=4 Flags=1 Len=59
+0000  00 00 3b 04 01 00 00 00 01 3c 68 74 6d 6c 3e 0a  |..;......<html>.|
+0010  3c 62 6f 64 79 3e 0a 3c 68 31 3e 48 65 6c 6c 6f  |<body>.<h1>Hello|
+0020  2c 20 42 69 6e 61 72 79 20 48 54 54 50 21 3c 2f  |, Binary HTTP!</|
+0030  68 31 3e 0a 3c 2f 62 6f 64 79 3e 0a 3c 2f 68 74  |h1>.</body>.</ht|
+0040  6d 6c 3e 0a                                      |ml>.|
+Annotation:
+- Length: `00 00 3b` (59 bytes)
+- Type: `04` (DATA)
+- Flags: `01` (END_STREAM)
+- Payload: 59 bytes of HTML content.
